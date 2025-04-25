@@ -1,0 +1,20 @@
+[
+  {
+    "Name": "multi_scale_tcn",
+    "Title": "Multi-Scale Temporal Convolutional Network for Stock Movement Prediction Using Historical Data",
+    "Experiment": "1. Compute technical indicators (e.g., moving averages, RSI) from the historical stock price data provided. 2. Construct a Temporal Convolutional Network (TCN) with multiple dilation rates to capture both short-term and long-term dependencies from the internal data. 3. Combine the computed technical indicators with raw historical features in a fully connected layer for binary stock movement prediction. 4. Compare performance with a baseline MLP model and analyze which time scales most influence the prediction.",
+    "Interestingness": 8,
+    "Feasibility": 9,
+    "Novelty": 7,
+    "novel": true
+  },
+  {
+    "Name": "data_fusion_ensemble",
+    "Title": "Data Fusion Ensemble for Stock Movement Prediction Using Computed Technical Indicators",
+    "Experiment": "1. Derive technical indicators (e.g., MACD, RSI, Bollinger Bands) from the historical stock price data. 2. Train a linear model (e.g., ridge regression) and a deep MLP model separately on these computed features to capture both linear and nonlinear relationships. 3. Fuse the outputs of the individual models using weighted averaging or a stacking ensemble to improve prediction robustness. 4. Evaluate the ensemble's performance using accuracy, precision, recall, and F1 score, and compare it with the individual models.",
+    "Interestingness": 8,
+    "Feasibility": 8,
+    "Novelty": 7,
+    "novel": true
+  }
+]

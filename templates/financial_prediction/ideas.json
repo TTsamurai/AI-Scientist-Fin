@@ -1,0 +1,47 @@
+[
+    {
+        "Name": "expanded_feature_set",
+        "Title": "Incorporating Additional Trading Metrics as Features",
+        "Experiment": "Modify the data loading function to include additional trading metrics like 'Open', 'High', 'Low', 'Volume', and 'TurnoverValue' alongside the closing prices. Update the model input size and retrain the model with this expanded feature set. Evaluate whether the additional features improve the predictive performance on validation and test sets.",
+        "Interestingness": 8,
+        "Feasibility": 9,
+        "Novelty": 7,
+        "novel": false
+    },
+    {
+        "Name": "time_series_features",
+        "Title": "Integrating Time-Series Analysis Techniques for Feature Enhancement",
+        "Experiment": "Modify the data loading function to calculate moving averages and exponential smoothing values for the closing prices over different window sizes. Add these as new features to the model's input. Update the model input size accordingly. Evaluate if these time-series derived features improve the predictive performance on the validation and test sets.",
+        "Interestingness": 9,
+        "Feasibility": 8,
+        "Novelty": 8,
+        "novel": false
+    },
+    {
+        "Name": "fourier_transform_features",
+        "Title": "Leveraging Fourier Transform for Capturing Cyclical Patterns in Stock Prices",
+        "Experiment": "Modify the data loading function to perform a Fourier Transform on the 14 days of closing prices for each record, extracting the dominant frequencies as additional features. Update the model input size to accommodate these new features, and retrain the model. Evaluate whether these frequency-domain features improve the model's predictive performance on validation and test sets.",
+        "Interestingness": 8,
+        "Feasibility": 8,
+        "Novelty": 8,
+        "novel": false
+    },
+    {
+        "Name": "cnn_temporal_patterns",
+        "Title": "Employing Convolutional Neural Networks to Capture Temporal Patterns in Stock Prices",
+        "Experiment": "Introduce a CNN-based architecture in the StockPredictor model to process the sequence of 14-day closing prices. Modify the model definition to include convolutional layers that capture temporal patterns in the input data. Adjust the data loading function to reshape the input data appropriately for CNN processing. Evaluate whether this pattern recognition approach enhances predictive performance on the validation and test sets.",
+        "Interestingness": 9,
+        "Feasibility": 8,
+        "Novelty": 9,
+        "novel": false
+    },
+    {
+        "Name": "seasonal_decomposition_features",
+        "Title": "Incorporating Seasonal Decomposition to Capture Cyclical Patterns in Stock Prices",
+        "Experiment": "Modify the data loading function to perform seasonal decomposition on the 14 days of closing prices for each record. Extract the trend, seasonal, and residual components as additional features. Update the model input size to include these new features and retrain the model. Evaluate whether incorporating these decomposed components improves the model's predictive performance on validation and test sets.",
+        "Interestingness": 9,
+        "Feasibility": 8,
+        "Novelty": 8,
+        "novel": false
+    }
+]
