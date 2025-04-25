@@ -21,6 +21,11 @@ AVAILABLE_LLMS = [
     "o1-preview-2024-09-12",
     "o1-mini-2024-09-12",
     "o1-2024-12-17",
+    "gpt-4o-mini",
+    "gpt-4.5-preview",
+    "o1-mini",
+    "o3-mini",
+    "gpt-4o",
     # OpenRouter models
     "llama3.1-405b",
     # Anthropic Claude models via Amazon Bedrock
@@ -48,14 +53,14 @@ AVAILABLE_LLMS = [
 # Get N responses from a single message, used for ensembling.
 @backoff.on_exception(backoff.expo, (openai.RateLimitError, openai.APITimeoutError))
 def get_batch_responses_from_llm(
-        msg,
-        client,
-        model,
-        system_message,
-        print_debug=False,
-        msg_history=None,
-        temperature=0.75,
-        n_responses=1,
+    msg,
+    client,
+    model,
+    system_message,
+    print_debug=False,
+    msg_history=None,
+    temperature=0.75,
+    n_responses=1,
 ):
     if msg_history is None:
         msg_history = []
@@ -79,9 +84,7 @@ def get_batch_responses_from_llm(
             seed=0,
         )
         content = [r.message.content for r in response.choices]
-        new_msg_history = [
-            new_msg_history + [{"role": "assistant", "content": c}] for c in content
-        ]
+        new_msg_history = [new_msg_history + [{"role": "assistant", "content": c}] for c in content]
     elif model == "llama-3-1-405b-instruct":
         new_msg_history = msg_history + [{"role": "user", "content": msg}]
         response = client.chat.completions.create(
@@ -96,9 +99,7 @@ def get_batch_responses_from_llm(
             stop=None,
         )
         content = [r.message.content for r in response.choices]
-        new_msg_history = [
-            new_msg_history + [{"role": "assistant", "content": c}] for c in content
-        ]
+        new_msg_history = [new_msg_history + [{"role": "assistant", "content": c}] for c in content]
     else:
         content, new_msg_history = [], []
         for _ in range(n_responses):
@@ -128,13 +129,13 @@ def get_batch_responses_from_llm(
 
 @backoff.on_exception(backoff.expo, (openai.RateLimitError, openai.APITimeoutError))
 def get_response_from_llm(
-        msg,
-        client,
-        model,
-        system_message,
-        print_debug=False,
-        msg_history=None,
-        temperature=0.75,
+    msg,
+    client,
+    model,
+    system_message,
+    print_debug=False,
+    msg_history=None,
+    temperature=0.75,
 ):
     if msg_history is None:
         msg_history = []
@@ -174,6 +175,11 @@ def get_response_from_llm(
         "gpt-4o-2024-05-13",
         "gpt-4o-mini-2024-07-18",
         "gpt-4o-2024-08-06",
+        "gpt-4o-mini",
+        "gpt-4.5-preview",
+        "o1-mini",
+        "o3-mini",
+        "gpt-4o",
     ]:
         new_msg_history = msg_history + [{"role": "user", "content": msg}]
         response = client.chat.completions.create(
@@ -191,7 +197,7 @@ def get_response_from_llm(
         content = response.choices[0].message.content
         new_msg_history = new_msg_history + [{"role": "assistant", "content": content}]
     elif model in [
-        "o1-preview-2024-09-12", 
+        "o1-preview-2024-09-12",
         "o1-mini-2024-09-12",
         "o1-2024-12-17",
     ]:
@@ -322,24 +328,21 @@ def create_client(model):
         client_model = model.split("/")[-1]
         print(f"Using Vertex AI with model {client_model}.")
         return anthropic.AnthropicVertex(), client_model
-    elif 'gpt' in model:
+    elif "gpt" in model:
         print(f"Using OpenAI API with model {model}.")
         return openai.OpenAI(), model
-    elif model in ["o1-preview-2024-09-12", "o1-mini-2024-09-12"]:
+    elif model in ["o1-preview-2024-09-12", "o1-mini-2024-09-12", "o1-mini", "o3-mini"]:
         print(f"Using OpenAI API with model {model}.")
         return openai.OpenAI(), model
     elif model in ["deepseek-chat", "deepseek-reasoner"]:
         print(f"Using OpenAI API with {model}.")
-        return openai.OpenAI(
-            api_key=os.environ["DEEPSEEK_API_KEY"],
-            base_url="https://api.deepseek.com"
-        ), model
+        return openai.OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com"), model
     elif model == "llama3.1-405b":
         print(f"Using OpenAI API with {model}.")
-        return openai.OpenAI(
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url="https://openrouter.ai/api/v1"
-        ), "meta-llama/llama-3.1-405b-instruct"
+        return (
+            openai.OpenAI(api_key=os.environ["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1"),
+            "meta-llama/llama-3.1-405b-instruct",
+        )
     elif "gemini" in model:
         print(f"Using Google Generative AI with model {model}.")
         genai.configure(api_key=os.environ["GEMINI_API_KEY"])

@@ -6,10 +6,10 @@ import sys
 from subprocess import TimeoutExpired
 
 MAX_ITERS = 4
-MAX_RUNS = 5
+MAX_RUNS = 3
 MAX_STDERR_OUTPUT = 1500
 
-coder_prompt = """Your goal is to implement the following idea: {title}.
+CODER_PROMPT = """Your goal is to implement the following idea: {title}.
 The proposed experiment is as follows: {idea}.
 You are given a total of up to {max_runs} runs to complete the necessary experiments. You do not need to use all {max_runs}.
 
@@ -117,7 +117,7 @@ def perform_experiments(idea, folder_name, coder, baseline_results) -> bool:
     ## RUN EXPERIMENT
     current_iter = 0
     run = 1
-    next_prompt = coder_prompt.format(
+    next_prompt = CODER_PROMPT.format(
         title=idea["Title"],
         idea=idea["Experiment"],
         max_runs=MAX_RUNS,

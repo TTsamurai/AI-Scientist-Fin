@@ -1,17 +1,19 @@
-import argparse
-import json
-import multiprocessing
-import openai
 import os
 import os.path as osp
-import shutil
 import sys
 import time
+import json
+import shutil
+import argparse
+import multiprocessing
+from datetime import datetime
+
 import torch
+import openai
+
 from aider.coders import Coder
 from aider.io import InputOutput
 from aider.models import Model
-from datetime import datetime
 
 from ai_scientist.generate_ideas import generate_ideas, check_idea_novelty
 from ai_scientist.llm import create_client, AVAILABLE_LLMS
@@ -34,7 +36,7 @@ def parse_arguments():
         help="Skip idea generation and load existing ideas",
     )
     parser.add_argument(
-        "--skip-novelty-check",
+        "--skip_novelty_check",
         action="store_true",
         help="Skip novelty check and use existing ideas",
     )
@@ -56,7 +58,7 @@ def parse_arguments():
         "--writeup",
         type=str,
         default="latex",
-        choices=["latex"],
+        choices=["latex", "no_writeup"],
         help="What format to use for writeup",
     )
     parser.add_argument(
@@ -74,12 +76,14 @@ def parse_arguments():
         "--gpus",
         type=str,
         default=None,
-        help="Comma-separated list of GPU IDs to use (e.g., '0,1,2'). If not specified, all available GPUs will be used.",
+        help=(
+            "Comma-separated list of GPU IDs (e.g. '0,1,2'). " "If unset, uses all available GPUs."
+        ),
     )
     parser.add_argument(
-        "--num-ideas",
+        "--num_ideas",
         type=int,
-        default=50,
+        default=20,
         help="Number of ideas to generate",
     )
     parser.add_argument(
@@ -88,6 +92,12 @@ def parse_arguments():
         default="semanticscholar",
         choices=["semanticscholar", "openalex"],
         help="Scholar engine to use.",
+    )
+    parser.add_argument(
+        "--idea_json_path",
+        type=str,
+        default="ideas.json",
+        help="Path to the JSON file containing research ideas.",
     )
     return parser.parse_args()
 
@@ -103,32 +113,31 @@ def check_latex_dependencies():
     Check if required LaTeX dependencies are installed on the system.
     Returns True if all dependencies are found, False otherwise.
     """
-    import shutil
-    import sys
 
-    required_dependencies = ['pdflatex', 'chktex']
+    required_dependencies = ["pdflatex", "chktex"]
     missing_deps = []
 
     for dep in required_dependencies:
         if shutil.which(dep) is None:
             missing_deps.append(dep)
-    
+
     if missing_deps:
         print("Error: Required LaTeX dependencies not found:", file=sys.stderr)
         return False
-    
+
     return True
-    
+
+
 def worker(
-        queue,
-        base_dir,
-        results_dir,
-        model,
-        client,
-        client_model,
-        writeup,
-        improvement,
-        gpu_id,
+    queue,
+    base_dir,
+    results_dir,
+    model,
+    client,
+    client_model,
+    writeup,
+    improvement,
+    gpu_id,
 ):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
     print(f"Worker {gpu_id} started.")
@@ -152,15 +161,15 @@ def worker(
 
 
 def do_idea(
-        base_dir,
-        results_dir,
-        idea,
-        model,
-        client,
-        client_model,
-        writeup,
-        improvement,
-        log_file=False,
+    base_dir,
+    results_dir,
+    idea,
+    model,
+    client,
+    client_model,
+    writeup,
+    improvement,
+    log_file=False,
 ):
     ## CREATE PROJECT FOLDER
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -193,9 +202,7 @@ def do_idea(
         print(f"*Starting idea: {idea_name}*")
         ## PERFORM EXPERIMENTS
         fnames = [exp_file, vis_file, notes]
-        io = InputOutput(
-            yes=True, chat_history_file=f"{folder_name}/{idea_name}_aider.txt"
-        )
+        io = InputOutput(yes=True, chat_history_file=f"{folder_name}/{idea_name}_aider.txt")
         if model == "deepseek-coder-v2-0724":
             main_model = Model("deepseek/deepseek-coder")
         elif model == "llama3.1-405b":
@@ -207,8 +214,10 @@ def do_idea(
             fnames=fnames,
             io=io,
             stream=False,
-            use_git=False,
-            edit_format="diff",
+            use_git=False,  # Off the shelfだとrepomapはあまり使えそうではなかった
+            # edit_format="diff",
+            edit_format="udiff",
+            # Seems working better for GPT-4 family for the "lazy" coding style
         )
 
         print_time()
@@ -250,6 +259,9 @@ def do_idea(
                 print(f"Failed to perform writeup: {e}")
                 return False
             print("Done writeup")
+        elif writeup == "no_writeup":
+            print("No writeup needed")
+            return True
         else:
             raise ValueError(f"Writeup format {writeup} not supported.")
 
@@ -281,9 +293,7 @@ def do_idea(
             print(f"*Starting Improvement*")
             try:
                 perform_improvement(review, coder)
-                generate_latex(
-                    coder, folder_name, f"{folder_name}/{idea['Name']}_improved.pdf"
-                )
+                generate_latex(coder, folder_name, f"{folder_name}/{idea['Name']}_improved.pdf")
                 paper_text = load_paper(f"{folder_name}/{idea['Name']}_improved.pdf")
                 review = perform_review(
                     paper_text,
@@ -312,14 +322,15 @@ def do_idea(
             log.close()
 
 
-if __name__ == "__main__":
+def main():
     args = parse_arguments()
 
     # Check available GPUs and adjust parallel processes if necessary
     available_gpus = get_available_gpus(args.gpus)
     if args.parallel > len(available_gpus):
         print(
-            f"Warning: Requested {args.parallel} parallel processes, but only {len(available_gpus)} GPUs available. Adjusting to {len(available_gpus)}."
+            f"Warning: Requested {args.parallel} parallel processes, but only {len(available_gpus)} GPUs available. 
+            Adjusting to {len(available_gpus)}."
         )
         args.parallel = len(available_gpus)
 
@@ -334,14 +345,24 @@ if __name__ == "__main__":
 
     base_dir = osp.join("templates", args.experiment)
     results_dir = osp.join("results", args.experiment)
-    ideas = generate_ideas(
-        base_dir,
-        client=client,
-        model=client_model,
-        skip_generation=args.skip_idea_generation,
-        max_num_generations=args.num_ideas,
-        num_reflections=NUM_REFLECTIONS,
+    idea_read_path = args.idea_json_path
+    idea_write_path = "_".join(
+        [args.idea_json_path.split(".json")[0], args.experiment, "ideas.json"]
     )
+
+    if not args.skip_idea_generation:
+        ideas = generate_ideas(
+            base_dir,
+            client=client,
+            model=client_model,
+            skip_generation=args.skip_idea_generation,
+            max_num_generations=args.num_ideas,
+            num_reflections=NUM_REFLECTIONS,
+        )
+    else:
+        with open(osp.join(base_dir, idea_read_path), "r") as f:
+            ideas = json.load(f)
+        ideas = ideas[: args.num_ideas]
     if not args.skip_novelty_check:
         ideas = check_idea_novelty(
             ideas,
@@ -350,10 +371,12 @@ if __name__ == "__main__":
             model=client_model,
             engine=args.engine,
         )
+    else:
+        for idea in ideas:
+            idea["novel"] = True
 
-    with open(osp.join(base_dir, "ideas.json"), "w") as f:
+    with open(osp.join(base_dir, idea_write_path), "w") as f:
         json.dump(ideas, f, indent=4)
-
     novel_ideas = [idea for idea in ideas if idea["novel"]]
     # novel_ideas = list(reversed(novel_ideas))
 
@@ -406,9 +429,19 @@ if __name__ == "__main__":
                     args.writeup,
                     args.improvement,
                 )
+                idea["implementation_success"] = success
                 print(f"Completed idea: {idea['Name']}, Success: {success}")
+
             except Exception as e:
+                idea["implementation_success"] = False
                 print(f"Failed to evaluate idea {idea['Name']}: {str(e)}")
                 import traceback
+
                 print(traceback.format_exc())
+    with open(osp.join(base_dir, idea_write_path), "w") as f:
+        json.dump(ideas, f, indent=4)
     print("All ideas evaluated.")
+
+
+if __name__ == "__main__":
+    main()
