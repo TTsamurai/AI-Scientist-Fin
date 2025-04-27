@@ -38,12 +38,31 @@ class JQuantsClient:
     BASE_URL = "https://api.jquants.com/v1"
 
     def __init__(self, refresh_token: str):
+        """
+        Initialize the client and acquire an access token.
+
+        Args:
+            refresh_token: The refresh token for J-Quants API authentication.
+        Raises:
+            EnvironmentError: If no refresh token is provided.
+        """
         if not refresh_token:
             raise EnvironmentError("JQUANTS_TOKEN environment variable is not set.")
         self.token = self._get_id_token(refresh_token)
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
     def _get_id_token(self, refresh_token: str) -> str:
+        """
+        Exchange a refresh token for an ID token.
+
+        Args:
+            refresh_token: The J-Quants refresh token.
+        Returns:
+            A valid ID token string.
+        Raises:
+            HTTPError: If the request fails.
+            ValueError: If the token is missing in the response.
+        """
         url = f"{self.BASE_URL}/token/auth_refresh?refreshtoken={refresh_token}"
         response = requests.post(url)
         response.raise_for_status()
@@ -53,6 +72,19 @@ class JQuantsClient:
         return token
 
     def get_stock_quotes(self, ticker: str, start: str, end: str) -> List[dict]:
+        """
+        Fetch daily stock price quotes for a given ticker and date range.
+
+        Args:
+            ticker: The stock code (e.g., "86040").
+            start: Start date in YYYYMMDD format.
+            end: End date in YYYYMMDD format.
+        Returns:
+            A list of dictionaries containing daily quote data.
+        Raises:
+            HTTPError: If the request fails.
+            ValueError: If expected data is missing in the response.
+        """
         url = f"{self.BASE_URL}/prices/daily_quotes?code={ticker}&from={start}&to={end}"
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
@@ -62,6 +94,15 @@ class JQuantsClient:
         return quotes
 
     def get_listed_companies(self) -> List[dict]:
+        """
+        Retrieve information on all listed companies.
+
+        Returns:
+            A list of dictionaries with company info.
+        Raises:
+            HTTPError: If the request fails.
+            ValueError: If expected data is missing in the response.
+        """
         url = f"{self.BASE_URL}/listed/info"
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
@@ -73,16 +114,30 @@ class JQuantsClient:
 
 class StockDataProcessor:
     """
-    Processes raw stock data into feature-engineered datasets, splits, scales, and saves them.
+    Processes raw stock data into feature-engineered datasets,
+    splits, scales, and saves them.
     """
 
     def __init__(self, raw_data: List[dict]):
+        """
+        Initialize the processor with raw data.
+
+        Args:
+            raw_data: A list of dictionaries from J-Quants daily quotes.
+        """
         df = pd.DataFrame(raw_data)
         df["Date"] = pd.to_datetime(df["Date"])
         df.sort_values("Date", inplace=True)
         self.df = df
 
     def engineer_features(self) -> pd.DataFrame:
+        """
+        Generate technical indicators and labels from raw price data.
+
+        Returns:
+            A DataFrame with engineered features and binary labels for
+            3, 7, and 15 days ahead movements.
+        """
         df = self.df.copy()
         df["Return"] = df["Close"].pct_change()
         df["SMA_5"] = df["Close"].rolling(5).mean()
@@ -101,6 +156,16 @@ class StockDataProcessor:
     def split_and_scale(
         self, df: pd.DataFrame, train_ratio: float, val_ratio: float
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """
+        Split the dataset into train/validation/test sets and apply standard scaling.
+
+        Args:
+            df: The feature-engineered DataFrame.
+            train_ratio: Fraction for training set.
+            val_ratio: Fraction for validation set.
+        Returns:
+            A tuple of scaled DataFrames: (train_df, val_df, test_df).
+        """
         n = len(df)
         train_end = int(n * train_ratio)
         val_end = train_end + int(n * val_ratio)
@@ -132,6 +197,13 @@ class StockDataProcessor:
     def save_datasets(
         datasets: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame], output_dir: str
     ) -> None:
+        """
+        Save the train, validation, and test datasets as CSV files.
+
+        Args:
+            datasets: Tuple containing (train_df, val_df, test_df).
+            output_dir: Directory path to save CSV files.
+        """
         os.makedirs(output_dir, exist_ok=True)
         names = ["train", "val", "test"]
         for name, df in zip(names, datasets):
@@ -141,6 +213,15 @@ class StockDataProcessor:
 
 
 def main() -> None:
+    """
+    Execute the full data retrieval and processing pipeline.
+
+    Steps:
+    1. Load configuration and authenticate client.
+    2. Fetch raw stock data.
+    3. Engineer features and labels.
+    4. Split, scale, and save datasets.
+    """
     cfg = Config()
     client = JQuantsClient(cfg.refresh_token)
     raw_data = client.get_stock_quotes(cfg.target_ticker, cfg.start_date, cfg.end_date)
